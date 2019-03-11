@@ -117,7 +117,7 @@ From the merged dataset, only the measurements on the mean and standard deviatio
 -  angle(Y,gravityMean)
 -  angle(Z,gravityMean)
 
-
+2 functions have been written, one for converting text files in the folder into csv and another for renaming columns in a dataset for better execution. 
 
 The activity file in the zipped dataset is used to get the activity labels and the merged dataset is accordingly replaced with these categorical data. 
 
