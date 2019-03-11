@@ -6,4 +6,4 @@ This repository contains
 This code uses dplyr package 
 The version of RStudio used is 3.5.1
 
--tidy.txt which the required dataset
+- tidy.txt which the required dataset
