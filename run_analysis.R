@@ -108,6 +108,6 @@ tidydata<- aggregate(subsetMergedData, by=list(activity = subsetMergedData$Activ
 
 tidydata[,90] = NULL
 tidydata[,89] = NULL
-write.table(tidydata, "tidy.txt", sep="\t")
+write.table(tidydata, "tidy.txt", sep="\t", , row.names=F)
 
 
