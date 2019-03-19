@@ -1,0 +1,90 @@
+---
+title: "Coursera: Interactive Plot Assignment"
+author: "A Ranjan"
+date: "19 March 2019"
+output: ioslides_presentation
+---
+## Date
+
+Date when this slide was made: 19 March 2019. 
+
+## About the  interactive plot
+
+The plot depicts Mutual Fund trade at National Stock Exchange, India in different years disaggregated by the value of subscription and redemption of mutual fund units every day.
+
+The data has been downloaded from NSE website:
+- <font size="4">https://www.nseindia.com/products/content/equities/mutual_funds/historical_mfss.htm</font>
+
+
+
+
+
+
+
+```{r, results='hide',message=FALSE, echo=FALSE}
+options( warn = -1 )
+suppressMessages(library(dplyr))
+suppressMessages(library(reshape2))
+suppressMessages(library(ggplot2))
+suppressMessages(library(plotly))
+
+directory<-"C:/Users/hp/Desktop/Coursera/DataProducts/PlotlyAssignment"
+setwd(directory)
+
+files<-list.files(directory, pattern=".csv", full.names=TRUE)
+length(files)
+D1<-read.csv(files[1],header = T)
+D2<-read.csv(files[2],header = T)
+D3<-read.csv(files[3],header = T)
+D4<-read.csv(files[4],header = T)
+D5<-read.csv(files[5],header = T)
+D6<-read.csv(files[6],header = T)
+D7<-read.csv(files[7],header = T)
+D8<-read.csv(files[8],header = T)
+D9<-read.csv(files[9],header = T)
+D10<-read.csv(files[10],header = T)
+
+data<-rbind(D1,D2,D3,D4,D5,D6,D7,D8,D9,D10)
+str(data)
+
+write.table(data,"MergedFile.txt", row.names=F)
+
+data$Date<-as.character(data$Date)
+data$MF_NOS_OF_ORDER_SUB<-as.numeric(data$MF_NOS_OF_ORDER_SUB)
+data$MF_TOT_SUB<-as.numeric(data$MF_TOT_SUB)
+data$MF_NOS_OF_ORDER_RED<-as.numeric(data$MF_NOS_OF_ORDER_RED)
+data$MF_TOT_RED<- as.numeric(data$MF_TOT_RED)
+data$MF_TOT_ORDER<-as.numeric(data$MF_TOT_ORDER)
+
+na_count <-sapply(data, function(y) sum(length(which(is.na(y)))))
+
+good<-complete.cases(data)
+dataReq<-data[good,]
+dataReq<-select(dataReq,Date,MF_TOT_SUB,MF_TOT_RED)
+
+
+dataReq$Date <- strptime(dataReq$Date, "%d-%B-%Y")
+dataReq<-rename(dataReq,subscription=MF_TOT_SUB,redemption=MF_TOT_RED)
+
+dataReq$Date<-as.POSIXct(dataReq$Date)
+meltedData<-melt(dataReq,id="Date")
+names(meltedData)<-c("date","type","value")
+
+```
+
+## Plot
+
+```{r, message=FALSE, echo=FALSE}
+suppressMessages(
+plot_ly(meltedData,x=meltedData$date,y=meltedData$value,color=meltedData$type, mode='lines') %>%
+  layout(
+    title = "Mutual Fund Trade at NSE, India",
+    
+      
+      yaxis = list(title = "Value in INR")
+      
+    )
+)
+```
+
+
