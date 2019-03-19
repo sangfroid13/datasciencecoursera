@@ -1,0 +1,66 @@
+---
+title: "Coursera:Project on Interactive Map"
+author: "A Ranjan"
+date: "19 March 2019"
+output: ioslides_presentation
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+## Date
+
+Date when this slide was made: 19 March 2019. 
+
+## About the interactive map
+
+The map depicts female adult (above 15 years of age) literacy rate (expressed as % of adult female population) for different countries (for the year 2011) through pop up. Where data was not available, the pop up denotes that. 
+
+The data has been downloaded from World Bank's Gender Portal.
+
+The data on countries' latitude-longitude has been sourced from:
+https://developers.google.com/public-data/docs/canonical/countries_csv
+
+(The pop-ups can be tested for Mexico, India since the data was sparingly available)
+
+
+
+```{r, results='hide',message=FALSE, echo=FALSE}
+options( warn = -1 )
+suppressMessages(library(dplyr))
+suppressMessages(library(leaflet))
+
+directory<-"C:/Users/hp/Desktop/Coursera/DataProducts/RMarkdownLeaflet"
+setwd(directory)
+filename<-"LiteracyRateAdultFemale.txt"
+filename2<-"countryLatLong.txt"
+initial<- read.table(filename, sep = "\t", header = TRUE ,nrows=100)
+classes<-sapply(initial, class)
+newclasses <- c(Series.Name="character", Country.Code="character", X2009..YR2009.="numeric", 
+                X2010..YR2010.="numeric",X2011..YR2011.="numeric",X2012..YR2012.="numeric",
+                X2013..YR2013.="numeric",X2014..YR2014="numeric",X2014..YR2014.="numeric",
+                X2015..YR2015.="numeric",X2016..YR2016.="numeric", X2017..YR2017.="numeric", 
+                X2018..YR2018.="numeric")
+suppressMessages(data<-read.table(filename,sep = "\t", header = TRUE, colClasses = newclasses, dec = ".", na.strings =".."))
+suppressMessages(counLatLong<- read.table(filename2, sep = "\t", header = TRUE ,quote="", fill=FALSE,stringsAsFactors = F))
+mergedData<-merge(data,counLatLong,by="Country.Name")
+mergedData=mutate(mergedData, YEAR2011 =
+              if_else(is.na(X2011..YR2011.), "Data Not Available",as.character(X2011..YR2011.)
+              )
+ )
+ df<-data.frame(mergedData$latitude,mergedData$longitude)
+ df<-rename(df,lat=mergedData.latitude,lng=mergedData.longitude)
+femaleAdultLiteracy<-mergedData$YEAR2011
+##df %>% leaflet() %>% addTiles() %>% addMarkers(clusterOptions = markerClusterOptions(), popup = ##femaleAdultLiteracy)
+
+
+```
+
+## Map
+
+```{r, echo=FALSE}
+df %>% leaflet() %>% addTiles() %>% addMarkers(clusterOptions = markerClusterOptions(), popup = femaleAdultLiteracy)
+```
+
+**Figure 1** Map depicting Female Adult Literacy Rate (%) for the year 2011
