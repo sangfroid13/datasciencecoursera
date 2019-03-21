@@ -1,0 +1,172 @@
+---
+title: "Analysis of Weight Lifting Exercises Dataset to investigate how well an activity was performed"
+author: "A Ranjan"
+date: "20 March 2019"
+output: html_document
+ 
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Introduction
+
+(To view this page as html in your browser, please use the following link: 
+https://sangfroid13.github.io/datasciencecoursera/PMLCoursera.html )
+
+The human activity recognition research has traditionally focused on discriminating between different activities, i.e. to predict "which" activity was performed at a specific point in time. The approach in this analysis is to investigate "how well" an activity was performed by the wearer. 
+The dataset for the investigation has been downloaded from:
+http://web.archive.org/web/20161224072740/http:/groupware.les.inf.puc-rio.br/har#dataset
+
+Six young health participants were asked to perform one set of 10 repetitions of the Unilateral Dumbbell Biceps Curl in five different fashions: exactly according to the specification (Class A), throwing the elbows to the front (Class B), lifting the dumbbell only halfway (Class C), lowering the dumbbell only halfway (Class D) and throwing the hips to the front (Class E).
+Class A corresponds to the specified execution of the exercise, while the other 4 classes correspond to common mistakes. 
+
+In this study, the dataset is used to build a model using various features so as to correctly classify the execution of the exercise.
+
+## Data loading, inspection and cleaning
+
+Two files are downloaded from the following links.
+- training data: https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv
+- test data (unlabelled, to be used for prediction): https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv
+
+The training data is seen to have multiple columns, wherein a number of columns contain predominantly missing values. These columns are removed from the dataset.
+Further, the first seven columns contain only descriptive variables which will not be useful in prediction and are, thus, removed.
+Next the dataset is tested for variables that have only one value. (There is no such variable)
+
+After the initial preprocessing, there are 52 variables. 
+
+(there can be p(p-1)/2 scatter plots i.e 1326 plots possible to analyze the variable relationship)
+
+```{r echo=TRUE}
+suppressMessages(library(dplyr))
+directory<-"C:/Users/hp/Desktop/Coursera/MachineLearning"
+setwd(directory)
+filename<-"pml-training.csv"
+data<-read.csv(filename,header = T,na.strings=c(""," ","NA"))
+na_count <-sapply(data, function(y) sum(length(which(is.na(y)))))
+selectNonNAcol<-function(data,na_count){
+                collist <- character()
+                for (i in 1:dim(data)[2]){
+                    if ((na_count[[i]]/dim(data)[2])<0.95){
+                    collist<-c(collist, names(na_count)[i])
+                    }
+                 }
+                collist
+}
+selectCol<-selectNonNAcol(data,na_count)
+subsetData <- select(data, selectCol)
+rm(data)
+subsetData2 <- select(subsetData, -(1:7))
+##str(subsetData2)
+colUnique <-sapply(subsetData2, function(y) length(unique((y))))
+countOneUnique<-sum(colUnique==1)
+rm(subsetData)
+
+```
+
+## Cross Validation, Preprocessing and Accuracy determination
+
+The data is now partitioned in the ratio of 3:1 for the purpose of training. 
+
+Test accuracy rate is estimated by holding out a subset of the training observations from the fitting process, and then applying the statistical learning method to those held out observations.
+
+
+Centre, Scale and Principal Component Analysis are used for preprocessing the training and test datasets.
+This results is dimension reduction.
+
+There can be p(p-1)/2 scatter plots i.e more than 1000 plots possible to analyze the variable relationship
+
+The preprocessed dataset is then used to train using three methods:
+- Predicting with trees (rpart in R)
+- Random forest (rf in R)
+- Boosting (gbm in R)
+
+The accuracy of prediction is determined for each method. 
+
+```{r echo=TRUE}
+suppressMessages(library(caret))
+suppressMessages(library(ggplot2))
+set.seed(1000)
+inTrain = createDataPartition(subsetData2$classe, p = 0.75,list=FALSE)
+training = subsetData2[inTrain,]
+testing = subsetData2[-inTrain,]
+
+dim(training)
+
+#Principal Component Analysis
+preProc1 <- preProcess(training[-53],method=c("center", "scale"))
+train1 <- predict(preProc1,training[-53])
+preProc2 <- preProcess(train1,method="pca",thres=.9)
+trainPC <- predict(preProc2,train1)
+
+preProc1 <- preProcess(testing[-53],method=c("center", "scale"))
+test1 <- predict(preProc1,testing[-53])
+testPC <- predict(preProc2,test1)
+
+trainPC<-data.frame(trainPC, training$classe)
+dim(trainPC)
+
+
+##pr_var <- ((preProc2$std)^2)/sum(((preProc2$std)^2))
+
+##plot(cumsum(pr_var), xlab = "Principal Components",
+##         ylab = "Cumulative Proportion of Variance",
+##          type = "b")
+
+gbmmodel <- train(training.classe~., data=trainPC, method="gbm",verbose = FALSE)
+gbmresult <- predict(gbmmodel, testPC)
+print("Accuracy from gbm model")
+confusionMatrix(testing$classe, gbmresult)$overall['Accuracy']
+rm(gbmmodel)
+
+rpartmodel <- train(training.classe~., data=trainPC, method="rpart")
+rpartresult <- predict(rpartmodel, testPC)
+print("Accuracy from rpart model")
+confusionMatrix(testing$classe, rpartresult)$overall['Accuracy']
+rm(rpartmodel)
+
+rfmodel <- train(training.classe~., data=trainPC, method="rf")
+rfresult <- predict(rfmodel, testPC)
+print("Accuracy from rf model")
+confusionMatrix(testing$classe, rfresult)$overall['Accuracy']
+
+
+```
+
+Since rf model has the highest accuracy, it is retained as our final model.
+
+A qplot is made to understand the prediction error; however, owing to a large number of PCs, this is not clearly discernable. [PC8 and PC14 are chosen as these are the most important PCs (obtained using varImp(rfmodel))]. 
+
+```{r echo=TRUE}
+testPC$predRight<-rfresult==testing$classe
+qplot(PC8,PC14,colour=predRight,data=testPC,main="newdata Predictions")
+rm(trainPC)
+rm(testPC)
+```
+
+
+## Predicting the unlabelled test set
+
+For predicting the unlabelled test set, the file is read into a data frame which is subsequently subjected to the same preprocessing as with the training data before applying rf model to predict.
+
+```{r, echo=TRUE}
+
+filename2<-"pml-testing.csv"
+testing<-read.csv(filename2,header = T,na.strings=c(""," ","NA"))
+subsetTesting <- select(testing, selectCol[-60])
+subsetTesting2 <- select(subsetTesting, -(1:7))
+##str(subsetData2)
+problem_id<-testing$problem_id
+preProc1 <- preProcess(subsetTesting2[-53],method=c("center", "scale"))
+test1 <- predict(preProc1,subsetTesting2[-53])
+testPC <- predict(preProc2,test1)
+pred<-predict(rfmodel, testPC)
+final<-data.frame(problem_id,pred)
+##final
+
+## The predicted values have a 95% accuracy as obtained through Coursera quiz.
+
+```
+
+
